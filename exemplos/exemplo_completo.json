@@ -1,0 +1,14 @@
+{
+  "estadoInicial": "q0",
+  "estadosAceitacao": ["q0"],
+  "alfabeto": ["a", "b"],
+  "estados": ["q0", "q1"],
+  "transicoes": {
+    "q0": { "a": "q1", "b": "q0" },
+    "q1": { "a": "q0", "b": "q1" }
+  },
+  "posicoes": {
+    "q0": { "x": 240, "y": 230 },
+    "q1": { "x": 500, "y": 230 }
+  }
+}

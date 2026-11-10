@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulador de AFD — Projeto 01 (Linguagens Regulares)</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- Cabeçalho Principal -->
+  <header class="top-header">
+    <div class="header-inner">
+      <div class="brand-group">
+        <div class="brand-badge">LFC • 2.1</div>
+        <div class="brand-title">
+          <h1>Simulador e Editor Visual de AFD</h1>
+          <p>Projeto 01 — Linguagens Regulares • Autômatos Finitos Determinísticos</p>
+        </div>
+      </div>
+
+      <div class="preset-selector-bar">
+        <label for="select-preset">Autômato de Exemplo:</label>
+        <select id="select-preset" class="select-control">
+          <option value="pdf_pag3">1. Número par de 'a's sobre {a, b}</option>
+          <option value="termina_ab">2. Cadeias sobre {a, b} que terminam com "ab"</option>
+          <option value="divisivel_por_3">3. Número binário divisível por 3</option>
+          <option value="contem_010">4. Cadeias binárias que contêm "010"</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- Conteúdo Principal -->
+  <main class="main-container">
+    <!-- Coluna Esquerda: Editor Gráfico + Tabela de Transições δ + JSON -->
+    <section class="column-stack">
+      <!-- Card 1: Editor Gráfico do Autômato -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>◉</span> Diagrama de Estados do AFD (Editor Visual)
+          </div>
+          <span id="afd-validation-badge" class="validation-badge complete">AFD Completo</span>
+        </div>
+        <p id="preset-description" class="card-subtitle"></p>
+
+        <!-- Barra de Ferramentas do Editor Visual -->
+        <div class="toolbar-row">
+          <button class="tool-btn active" data-tool-btn="selecionar" title="Mover estados e editar">
+            <span>✥</span> Selecionar / Mover
+          </button>
+          <button class="tool-btn" data-tool-btn="estado" title="Adicionar novo estado clicando no quadro">
+            <span>＋</span> + Estado
+          </button>
+          <button class="tool-btn" data-tool-btn="transicao" title="Criar transição entre dois estados">
+            <span>↝</span> + Transição
+          </button>
+          <button class="tool-btn" data-tool-btn="inicial" title="Definir estado inicial (q0)">
+            <span>➔</span> Definir Inicial
+          </button>
+          <button class="tool-btn" data-tool-btn="aceitacao" title="Marcar/desmarcar estado de aceitação">
+            <span>◎</span> Alternar Aceitação
+          </button>
+          <button class="tool-btn" data-tool-btn="excluir" title="Remover estado ou transição">
+            <span>✕</span> Excluir
+          </button>
+          <button id="btn-clear-automaton" class="tool-btn danger-btn" title="Limpar todo o autômato">
+            Limpar Tudo
+          </button>
+        </div>
+
+        <div id="tool-hint" class="tool-hint-bar">
+          Arraste estados para movê-los • Duplo clique no fundo cria estado • Duplo clique no estado alterna Aceitação • Shift+Clique cria transição.
+        </div>
+
+        <!-- Canvas SVG Interativo -->
+        <div class="canvas-wrapper">
+          <svg id="afd-canvas" viewBox="0 0 760 420" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+
+        <div class="canvas-legend">
+          <span class="legend-item"><span class="legend-dot initial"></span> Seta "Início": Estado Inicial (q₀)</span>
+          <span class="legend-item"><span class="legend-dot accept"></span> Círculo Duplo: Estado de Aceitação (∈ F)</span>
+          <span class="legend-item"><span class="legend-dot active"></span> Brilho Ativo: Estado Atual na Simulação</span>
+        </div>
+      </div>
+
+      <!-- Card 2: Definição Formal M = (Q, Σ, δ, q0, F) e Tabela de Transições -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>δ</span> Definição Formal e Função de Transição
+          </div>
+        </div>
+
+        <div class="formal-tuple-box">
+          <div class="formal-item"><strong>Q (Estados):</strong> <span id="formal-q" class="mono"></span></div>
+          <div class="formal-item"><strong>Σ (Alfabeto):</strong> <span id="formal-sigma" class="mono"></span></div>
+          <div class="formal-item"><strong>q₀ (Inicial):</strong> <span id="formal-q0" class="mono"></span></div>
+          <div class="formal-item"><strong>F (Aceitação):</strong> <span id="formal-f" class="mono"></span></div>
+        </div>
+
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead id="transition-table-head"></thead>
+            <tbody id="transition-table-body"></tbody>
+          </table>
+        </div>
+
+        <div class="table-quick-actions">
+          <button id="btn-quick-add-state" class="btn">+ Adicionar Estado</button>
+          <input id="input-new-symbol" type="text" class="mini-input" placeholder="Novo símb." maxlength="4" />
+          <button id="btn-quick-add-symbol" class="btn">+ Símbolo em Σ</button>
+        </div>
+      </div>
+
+      <!-- Card 3: Importação / Exportação JSON -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>{ }</span> Especificação do AFD em JSON
+          </div>
+        </div>
+        <p class="card-subtitle">
+          Suporta o formato simplificado (objeto mapeando estados para suas transições) e o formato completo com metadados.
+        </p>
+
+        <div class="json-tabs">
+          <button id="btn-json-format-pdf" class="json-tab-btn active">
+            Formato Simplificado (Transições)
+          </button>
+          <button id="btn-json-format-full" class="json-tab-btn">
+            Formato Completo (com inicial/finais)
+          </button>
+        </div>
+
+        <textarea id="json-editor-textarea" class="json-textarea" spellcheck="false"></textarea>
+        <div id="json-status-msg" class="json-feedback-msg info"></div>
+
+        <div class="json-actions-row">
+          <button id="btn-import-json" class="btn btn-primary">Importar JSON do Editor</button>
+          <button id="btn-upload-json" class="btn">Carregar Arquivo .json</button>
+          <button id="btn-download-json" class="btn">Baixar .json</button>
+          <button id="btn-copy-json" class="btn">Copiar JSON</button>
+          <input id="input-file-json" type="file" accept=".json,application/json" style="display: none;" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Coluna Direita: Simulador Passo a Passo + Variáveis da Seção 2.1 + Testes em Lote -->
+    <section class="column-stack">
+      <!-- Card 4: Simulador Passo a Passo -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>▶</span> Simulador de AFD Passo a Passo
+          </div>
+        </div>
+        <p class="card-subtitle">
+          Processa cada símbolo separadamente, guardando em variáveis o <strong>estado atual</strong> e os <strong>símbolos restantes da cadeia de entrada</strong>.
+        </p>
+
+        <!-- Entrada da Cadeia -->
+        <div class="input-string-row">
+          <div class="string-input-wrapper">
+            <input
+              id="input-string"
+              type="text"
+              class="string-input"
+              placeholder="Digite a cadeia de entrada (ex: abbaab) ou deixe vazio para ε"
+              value="abbaab"
+            />
+          </div>
+          <button id="btn-empty-string" class="btn" title="Testar cadeia vazia (ε)">Testar ε</button>
+        </div>
+
+        <!-- Botões de Controle de Execução -->
+        <div class="sim-controls-bar">
+          <button id="btn-sim-reset" class="btn" title="Reiniciar no estado inicial q0">
+            ⟲ Reiniciar
+          </button>
+          <button id="btn-sim-prev" class="btn" title="Voltar um passo" disabled>
+            ◀ Anterior
+          </button>
+          <button id="btn-sim-next" class="btn btn-primary" title="Ler próximo símbolo da cadeia">
+            Próximo Passo ▶
+          </button>
+          <button id="btn-sim-autoplay" class="btn" title="Executar passo a passo automaticamente">
+            <span>▶</span> Auto
+          </button>
+          <button id="btn-sim-run-all" class="btn btn-emerald" title="Processar toda a cadeia imediatamente">
+            ⏩ Executar Tudo
+          </button>
+
+          <div class="speed-control" title="Velocidade da execução automática (ms por passo)">
+            <label for="sim-speed">Ritmo:</label>
+            <input id="sim-speed" type="range" min="200" max="1400" step="100" value="650" />
+          </div>
+        </div>
+
+        <!-- Banner de Resultado / Status -->
+        <div id="sim-status-banner" class="status-banner status-idle">
+          <h4 id="sim-status-title">PRONTO PARA SIMULAR</h4>
+          <p id="sim-status-desc">Clique em 'Próximo Passo' para processar símbolo por símbolo ou 'Executar Tudo'.</p>
+        </div>
+
+        <!-- Variáveis Principais exigidas na Seção 2.1 do PDF -->
+        <div class="variables-grid">
+          <div class="var-card">
+            <div>
+              <div class="var-label">1. Estado Atual</div>
+              <div class="var-code-name">estadoAtual</div>
+            </div>
+            <div id="var-estado-atual" class="var-value">q0</div>
+            <span id="var-estado-badge" class="var-subbadge neutral">Aguardando início</span>
+          </div>
+
+          <div class="var-card">
+            <div>
+              <div class="var-label">2. Cadeia Restante</div>
+              <div class="var-code-name">cadeiaRestante</div>
+            </div>
+            <div id="var-cadeia-restante" class="var-value">"abbaab"</div>
+            <span id="var-cadeia-info" class="var-subbadge neutral">6 símbolo(s) a ler</span>
+          </div>
+
+          <div class="var-card">
+            <div>
+              <div class="var-label">Função de Transição</div>
+              <div class="var-code-name">δ(estadoAtual, símb)</div>
+            </div>
+            <div id="var-transicao-aplicada" class="var-value">δ(q, a)</div>
+            <span id="var-transicao-detalhe" class="var-subbadge neutral">Nenhum passo executado</span>
+          </div>
+        </div>
+
+        <!-- Fita de Entrada Visual -->
+        <div class="tape-container">
+          <div class="tape-header">Fita da Cadeia de Entrada e Cabeçote de Leitura</div>
+          <div id="tape-cells" class="tape-cells"></div>
+        </div>
+
+        <!-- Rastreamento Passo a Passo (Trace) -->
+        <div class="card-title" style="font-size: 0.88rem; margin-bottom: 8px;">
+          Histórico de Execução Passo a Passo
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Passo</th>
+                <th>Transição Aplicada</th>
+                <th>Estado Atual</th>
+                <th>Cadeia Restante</th>
+              </tr>
+            </thead>
+            <tbody id="trace-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Card 5: Bateria de Testes de Cadeias em Lote -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>✓</span> Bateria de Testes de Cadeias
+          </div>
+        </div>
+        <p class="card-subtitle">
+          Verifique várias cadeias simultaneamente no AFD atual ou clique em "Simular ▶" para inspecionar passo a passo.
+        </p>
+
+        <div class="input-string-row">
+          <input
+            id="input-batch-string"
+            type="text"
+            class="string-input"
+            placeholder="Adicionar cadeia de teste (deixe em branco para ε)..."
+          />
+          <button id="btn-add-batch-test" class="btn btn-primary">+ Testar Cadeia</button>
+        </div>
+
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Cadeia de Entrada</th>
+                <th>Estado Final</th>
+                <th>Resultado</th>
+                <th class="right-cell">Ação</th>
+              </tr>
+            </thead>
+            <tbody id="batch-test-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal para Definir/Editar Símbolo de Transição -->
+  <div id="modal-transition" class="modal-backdrop">
+    <div class="modal-box">
+      <h3 id="modal-transition-title">Transição de q0 → q1</h3>
+      <p>Informe o(s) símbolo(s) do alfabeto Σ para esta transição (separe múltiplos símbolos por vírgula, ex: <code>a, b</code>):</p>
+      <input
+        id="modal-transition-symbol"
+        type="text"
+        class="string-input"
+        placeholder="Ex: a"
+      />
+      <div class="modal-actions">
+        <button id="btn-delete-transition" class="btn" style="color: #fda4af; margin-right: auto;">
+          Excluir Transição
+        </button>
+        <button id="btn-cancel-transition" class="btn">Cancelar</button>
+        <button id="btn-save-transition" class="btn btn-primary">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast de Notificação -->
+  <div id="app-toast" class="toast-notification"></div>
+
+  <!-- Scripts -->
+  <script src="js/afd.js"></script>
+  <script src="js/canvas.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
